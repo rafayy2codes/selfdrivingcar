@@ -201,6 +201,11 @@ class DQNAgent:
         self.optimizer.step()
 
 # === Training loop + plotting ===
+# === Training loop + plotting + saving ===
+import os
+import csv
+from datetime import datetime
+
 plt.ion()
 fig, ax = plt.subplots()
 episode_rewards = []
@@ -215,7 +220,18 @@ def update_plot(new_reward):
     plt.pause(0.001)
 
 def train(agent, env, episodes=300):
-    for episode in range(episodes):
+    model_folder = "models"
+    os.makedirs(model_folder, exist_ok=True)
+
+    log_path = os.path.join(model_folder, "training_log.csv")
+    if not os.path.exists(log_path):
+        with open(log_path, "w", newline="") as f:
+            writer = csv.writer(f)
+            writer.writerow(["Episode", "TotalReward", "ModelFile"])
+
+    best_total_reward = float('-inf')
+
+    for episode in range(1, episodes + 1):
         state = env.reset()
         total_reward = 0
         done = False
@@ -237,8 +253,27 @@ def train(agent, env, episodes=300):
         print(f"Episode {episode} reward: {total_reward:.2f}")
         update_plot(total_reward)
 
+        # Save model
+        model_name = f"model_{episode}.pth"
+        model_path = os.path.join(model_folder, model_name)
+        torch.save(agent.model.state_dict(), model_path)
+
+        # Save log
+        with open(log_path, "a", newline="") as f:
+            writer = csv.writer(f)
+            writer.writerow([episode, total_reward, model_name])
+
+        # Save best model
+        if total_reward > best_total_reward:
+            best_total_reward = total_reward
+            torch.save(agent.model.state_dict(), os.path.join(model_folder, "best_model.pth"))
+            print(f"✅ Best model updated at episode {episode} with reward {total_reward:.2f}")
+
+    # Final plot
     plt.ioff()
+    plt.savefig(os.path.join(model_folder, "rewards_plot.png"))
     plt.show()
+    print(f"\n🎉 Training complete! Models & logs saved in '{model_folder}/'")
 
 # === Main ===
 if __name__ == "__main__":
@@ -246,5 +281,4 @@ if __name__ == "__main__":
     nb_action = 4   # accelerate, turn right, turn left, no action
     env = F1Env()
     agent = DQNAgent(input_size, nb_action)
-
     train(agent, env, episodes=500)
