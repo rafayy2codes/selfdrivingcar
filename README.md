@@ -99,6 +99,3 @@ The environment is built using **Pygame** for 2D rendering and physics simulatio
 - matplotlib  
 
 ---
-
-*License info here.*
-
